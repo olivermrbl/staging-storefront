@@ -28,8 +28,8 @@ const RelatedProducts = ({ product }: RelatedProductsProps) => {
       params.collection_id = [product.collection_id]
     }
 
-    if (product.type) {
-      params.type = product.type.id
+    if (product.type_id) {
+      params.type_id = [product.type.id]
     }
 
     if (product.tags) {
