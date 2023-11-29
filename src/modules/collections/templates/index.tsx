@@ -1,22 +1,18 @@
+"use client"
+
 import usePreviews from "@lib/hooks/use-previews"
+import { getProductsByCollectionHandle } from "@lib/data"
 import getNumberOfSkeletons from "@lib/util/get-number-of-skeletons"
 import repeat from "@lib/util/repeat"
 import ProductPreview from "@modules/products/components/product-preview"
 import SkeletonProductPreview from "@modules/skeletons/components/skeleton-product-preview"
-import { fetchCollectionProducts } from "@pages/collections/[id]"
+import { useInfiniteQuery } from "@tanstack/react-query"
 import { useCart } from "medusa-react"
 import React, { useEffect } from "react"
 import { useInView } from "react-intersection-observer"
-import { useInfiniteQuery } from "react-query"
+import { ProductCollection } from "@medusajs/medusa"
 
-type CollectionTemplateProps = {
-  collection: {
-    id: string
-    title: string
-  }
-}
-
-const CollectionTemplate: React.FC<CollectionTemplateProps> = ({
+const CollectionTemplate: React.FC<{ collection: ProductCollection }> = ({
   collection,
 }) => {
   const { cart } = useCart()
@@ -27,19 +23,26 @@ const CollectionTemplate: React.FC<CollectionTemplateProps> = ({
     hasNextPage,
     fetchNextPage,
     isFetchingNextPage,
-    isLoading,
+    refetch,
   } = useInfiniteQuery(
-    [`get_collection_products`, collection.id, cart?.id],
+    [`get_collection_products`, collection.handle, cart?.id],
     ({ pageParam }) =>
-      fetchCollectionProducts({
+      getProductsByCollectionHandle({
         pageParam,
-        id: collection.id,
+        handle: collection.handle!,
         cartId: cart?.id,
+        currencyCode: cart?.region.currency_code,
       }),
     {
       getNextPageParam: (lastPage) => lastPage.nextPage,
     }
   )
+
+  useEffect(() => {
+    if (cart?.region_id) {
+      refetch()
+    }
+  }, [cart?.region_id, refetch])
 
   const previews = usePreviews({
     pages: infiniteData?.pages,
@@ -58,19 +61,12 @@ const CollectionTemplate: React.FC<CollectionTemplateProps> = ({
       <div className="mb-8 text-2xl-semi">
         <h1>{collection.title}</h1>
       </div>
-      <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-4 gap-y-8">
+      <ul className="grid grid-cols-2 small:grid-cols-3 medium:grid-cols-4 gap-x-6 gap-y-8">
         {previews.map((p) => (
           <li key={p.id}>
             <ProductPreview {...p} />
           </li>
         ))}
-        {isLoading &&
-          !previews.length &&
-          repeat(8).map((index) => (
-            <li key={index}>
-              <SkeletonProductPreview />
-            </li>
-          ))}
         {isFetchingNextPage &&
           repeat(getNumberOfSkeletons(infiniteData?.pages)).map((index) => (
             <li key={index}>

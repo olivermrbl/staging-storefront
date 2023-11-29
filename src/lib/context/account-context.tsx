@@ -1,9 +1,11 @@
+"use client"
+
 import { medusaClient } from "@lib/config"
 import { Customer } from "@medusajs/medusa"
+import { useMutation } from "@tanstack/react-query"
 import { useMeCustomer } from "medusa-react"
-import { useRouter } from "next/router"
+import { useRouter } from "next/navigation"
 import React, { createContext, useCallback, useContext, useState } from "react"
-import { useMutation } from "react-query"
 
 export enum LOGIN_VIEW {
   SIGN_IN = "sign-in",
@@ -36,6 +38,7 @@ export const AccountProvider = ({ children }: AccountProviderProps) => {
     refetch,
     remove,
   } = useMeCustomer({ onError: () => {} })
+
   const loginView = useState<LOGIN_VIEW>(LOGIN_VIEW.SIGN_IN)
 
   const router = useRouter()
@@ -46,7 +49,10 @@ export const AccountProvider = ({ children }: AccountProviderProps) => {
     }
   }, [customer, retrievingCustomer, router])
 
-  const useDeleteSession = useMutation("delete-session", handleDeleteSession)
+  const useDeleteSession = useMutation({
+    mutationFn: handleDeleteSession,
+    mutationKey: ["delete-session"],
+  })
 
   const handleLogout = () => {
     useDeleteSession.mutate(undefined, {

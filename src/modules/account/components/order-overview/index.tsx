@@ -1,4 +1,6 @@
-import Button from "@modules/common/components/button"
+"use client"
+
+import { Button } from "@medusajs/ui"
 import Spinner from "@modules/common/icons/spinner"
 import { useCustomerOrders } from "medusa-react"
 import Link from "next/link"

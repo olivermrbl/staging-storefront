@@ -1,13 +1,14 @@
-import { medusaClient } from "@lib/config"
+import { getProductsList, getCollectionsList } from "@lib/data"
 import { getPercentageDiff } from "@lib/util/get-precentage-diff"
-import { Product, ProductCollection, Region } from "@medusajs/medusa"
+import { ProductCollection, Region } from "@medusajs/medusa"
+import { PricedProduct } from "@medusajs/medusa/dist/types/pricing"
+import { useQuery } from "@tanstack/react-query"
 import { formatAmount, useCart } from "medusa-react"
-import { useQuery } from "react-query"
 import { ProductPreviewType } from "types/global"
 import { CalculatedVariant } from "types/medusa"
 
 type LayoutCollection = {
-  id: string
+  handle: string
   title: string
 }
 
@@ -17,8 +18,8 @@ const fetchCollectionData = async (): Promise<LayoutCollection[]> => {
   let count = 1
 
   do {
-    await medusaClient.collections
-      .list({ offset })
+    await getCollectionsList(offset)
+      .then((res) => res)
       .then(({ collections: newCollections, count: newCount }) => {
         collections = [...collections, ...newCollections]
         count = newCount
@@ -30,13 +31,15 @@ const fetchCollectionData = async (): Promise<LayoutCollection[]> => {
   } while (collections.length < count)
 
   return collections.map((c) => ({
-    id: c.id,
+    handle: c.handle,
     title: c.title,
   }))
 }
 
 export const useNavigationCollections = () => {
-  const queryResults = useQuery("navigation_collections", fetchCollectionData, {
+  const queryResults = useQuery({
+    queryFn: fetchCollectionData,
+    queryKey: ["navigation_collections"],
     staleTime: Infinity,
     refetchOnWindowFocus: false,
   })
@@ -46,21 +49,27 @@ export const useNavigationCollections = () => {
 
 const fetchFeaturedProducts = async (
   cartId: string,
-  region: Region
+  region: Region,
+  collectionId?: string
 ): Promise<ProductPreviewType[]> => {
-  const products = await medusaClient.products
-    .list({
-      is_giftcard: false,
-      limit: 4,
+  const products: PricedProduct[] = await getProductsList({
+    pageParam: 0,
+    queryParams: {
+      limit: 3,
       cart_id: cartId,
-    })
+      region_id: region.id,
+      currency_code: region.currency_code,
+      collection_id: collectionId ? [collectionId] : [],
+    },
+  })
+    .then((res) => res.response)
     .then(({ products }) => products)
-    .catch((_) => [] as Product[])
+    .catch((_) => [] as PricedProduct[])
 
   return products
     .filter((p) => !!p.variants)
     .map((p) => {
-      const variants = p.variants as CalculatedVariant[]
+      const variants = p.variants as unknown as CalculatedVariant[]
 
       const cheapestVariant = variants.reduce((acc, curr) => {
         if (acc.calculated_price > curr.calculated_price) {
@@ -70,10 +79,10 @@ const fetchFeaturedProducts = async (
       }, variants[0])
 
       return {
-        id: p.id,
-        title: p.title,
-        handle: p.handle,
-        thumbnail: p.thumbnail,
+        id: p.id!,
+        title: p.title!,
+        handle: p.handle!,
+        thumbnail: p.thumbnail!,
         price: cheapestVariant
           ? {
               calculated_price: formatAmount({
@@ -102,12 +111,17 @@ const fetchFeaturedProducts = async (
     })
 }
 
-export const useFeaturedProductsQuery = () => {
+export const useFeaturedProductsQuery = (collectionId?: string) => {
   const { cart } = useCart()
 
   const queryResults = useQuery(
-    ["layout_featured_products", cart?.id, cart?.region],
-    () => fetchFeaturedProducts(cart?.id!, cart?.region!),
+    ["layout_featured_products", cart?.id, cart?.region, collectionId],
+    () =>
+      fetchFeaturedProducts(
+        cart?.id!,
+        cart?.region!,
+        collectionId && collectionId
+      ),
     {
       enabled: !!cart?.id && !!cart?.region,
       staleTime: Infinity,

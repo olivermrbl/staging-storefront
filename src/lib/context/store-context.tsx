@@ -1,3 +1,5 @@
+"use client"
+
 import { medusaClient } from "@lib/config"
 import { handleError } from "@lib/util/handle-error"
 import { Region } from "@medusajs/medusa"
@@ -9,6 +11,7 @@ import {
 } from "medusa-react"
 import React, { useEffect, useState } from "react"
 import { useCartDropdown } from "./cart-dropdown-context"
+import { useSearchParams } from "next/navigation"
 
 interface VariantInfoProps {
   variantId: string
@@ -54,6 +57,17 @@ export const StoreProvider = ({ children }: StoreProps) => {
   const addLineItem = useCreateLineItem(cart?.id!)
   const removeLineItem = useDeleteLineItem(cart?.id!)
   const adjustLineItem = useUpdateLineItem(cart?.id!)
+
+  // check if the user is onboarding and sets the onboarding session storage
+  const searchParams = useSearchParams()
+  const onboardingCartId = searchParams.get("cart_id")
+  const isOnboarding = searchParams.get("onboarding")
+
+  useEffect(() => {
+    if (isOnboarding === "true") {
+      sessionStorage.setItem("onboarding", "true")
+    }
+  }, [isOnboarding])
 
   const storeRegion = (regionId: string, countryCode: string) => {
     if (!IS_SERVER) {
@@ -193,7 +207,7 @@ export const StoreProvider = ({ children }: StoreProps) => {
 
   useEffect(() => {
     const ensureCart = async () => {
-      const cartId = getCart()
+      const cartId = onboardingCartId || getCart()
       const region = getRegion()
 
       if (cartId) {

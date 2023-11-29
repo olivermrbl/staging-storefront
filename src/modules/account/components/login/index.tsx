@@ -1,8 +1,9 @@
 import { medusaClient } from "@lib/config"
 import { LOGIN_VIEW, useAccount } from "@lib/context/account-context"
-import Button from "@modules/common/components/button"
+import { Button } from "@medusajs/ui"
 import Input from "@modules/common/components/input"
-import { useRouter } from "next/router"
+import { Spinner } from "@medusajs/icons"
+import { useRouter } from "next/navigation"
 import { useState } from "react"
 import { FieldValues, useForm } from "react-hook-form"
 
@@ -24,11 +25,11 @@ const Login = () => {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, isSubmitting },
   } = useForm<SignInCredentials>()
 
   const onSubmit = handleSubmit(async (credentials) => {
-    medusaClient.auth
+    await medusaClient.auth
       .authenticate(credentials)
       .then(() => {
         refetchCustomer()
@@ -39,6 +40,11 @@ const Login = () => {
 
   return (
     <div className="max-w-sm w-full flex flex-col items-center">
+      {isSubmitting && (
+        <div className="z-10 fixed inset-0 bg-white bg-opacity-50 flex items-center justify-center">
+          <Spinner />
+        </div>
+      )}
       <h1 className="text-large-semi uppercase mb-6">Welcome back</h1>
       <p className="text-center text-base-regular text-gray-700 mb-8">
         Sign in to access an enhanced shopping experience.
@@ -66,7 +72,9 @@ const Login = () => {
             </span>
           </div>
         )}
-        <Button className="mt-6">Enter</Button>
+        <Button className="mt-6 w-full" size="large">
+          Enter
+        </Button>
       </form>
       <span className="text-center text-gray-700 text-small-regular mt-6">
         Not a member?{" "}
