@@ -33,7 +33,7 @@ const RelatedProducts = ({ product }: RelatedProductsProps) => {
       params.collection_id = [product.collection_id]
     }
 
-    if (product.type_id) {
+    if (product.type_id && product.type) {
       params.type_id = [product.type.id]
     }
 
